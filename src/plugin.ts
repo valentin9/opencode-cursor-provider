@@ -1,8 +1,8 @@
-import { Plugin } from "@opencode-ai/plugin"
+import { Plugin } from "@opencode/plugin"
 import { createCursorLink } from "./auth/link.ts"
 import { createSessionAgentBridge } from "./bridge/bridge.ts"
 import { sessionFromId } from "./bridge/correlation.ts"
-import { applyModels, applyProvider, modelParamsFromOptions } from "./catalog/catalog.ts"
+import { applyDefaultModel, applyProvider, modelParamsFromOptions } from "./catalog/catalog.ts"
 import { createModelSource } from "./catalog/source.ts"
 import { asCatalogModelID, asSessionID, PROVIDER_ID } from "./ids.ts"
 import { toLanguageModel } from "./model/language-model.ts"
@@ -19,7 +19,10 @@ export const plugin = Plugin.define({
       restoreCredential: () => link.restore(ctx),
       resolveApiKey: () => link.resolve(),
       rejectCredential: () => link.reject(),
-      reloadCatalog: () => ctx.catalog.reload(),
+      reloadCatalog: async () => {
+        await ctx.provider.reload()
+        await ctx.model.reload()
+      },
     })
     const bridge = createSessionAgentBridge({
       link,
@@ -42,9 +45,11 @@ export const plugin = Plugin.define({
       await ctx.integration.transform((draft) => {
         link.register(draft)
       }),
-      await ctx.catalog.transform((draft) => {
-        applyProvider(draft)
-        applyModels(draft, models.list())
+      await ctx.provider.transform((draft) => {
+        applyProvider(draft, models.list())
+      }),
+      await ctx.model.transform((draft) => {
+        applyDefaultModel(draft, models.list())
       }),
       await ctx.session.hook(
         "context",

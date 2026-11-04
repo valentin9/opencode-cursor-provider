@@ -137,6 +137,7 @@ function translateMessage(message: SDKMessage, toolInputs: Map<string, unknown>)
         },
       ]
     case "status":
+    case "summary":
       return []
     case "system":
     case "user":

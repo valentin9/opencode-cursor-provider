@@ -1,6 +1,7 @@
 import type { ModelParameterDefinition, ModelParameterValue, ModelVariant } from "@cursor/sdk"
-import { Integration, Model, Provider } from "@opencode-ai/plugin"
-import type { CatalogEditor } from "@opencode-ai/plugin/promise/catalog"
+import { Integration, Model, Provider } from "@opencode/plugin"
+import type { ModelEditor } from "@opencode/plugin/promise/model"
+import type { ProviderEditor } from "@opencode/plugin/promise/provider"
 import { PACKAGE_SPEC, PROVIDER_ID, asCatalogModelID, asCursorModelID, type CatalogModelID, type CursorModelID } from "../ids.ts"
 
 export interface CursorModelDescriptor {
@@ -34,8 +35,13 @@ export function providerId() {
   return Provider.ID.make(PROVIDER_ID)
 }
 
-export function applyProvider(draft: CatalogEditor): void {
-  draft.provider.update(PROVIDER_ID, (provider) => {
+export function applyProvider(draft: ProviderEditor, models: readonly CursorModelDescriptor[]): void {
+  const entries = catalogModels(models)
+  if (draft.get(PROVIDER_ID) === undefined) {
+    draft.add({ info: providerInfo(), models: entries })
+    return
+  }
+  draft.update(PROVIDER_ID, (provider) => {
     provider.id = providerId()
     provider.name = "Cursor"
     provider.package = PACKAGE_SPEC
@@ -43,36 +49,43 @@ export function applyProvider(draft: CatalogEditor): void {
     provider.activation = "auto"
     dropBaseURL(provider.settings)
   })
+  draft.models.set(PROVIDER_ID, entries)
 }
 
-export function applyModels(draft: CatalogEditor, models: readonly CursorModelDescriptor[]): void {
-  for (const model of models) {
-    writeModel(draft, model.catalogID, model)
-  }
+export function applyDefaultModel(draft: ModelEditor, models: readonly CursorModelDescriptor[]): void {
   const preferred = models[0]
-  if (preferred) {
-    writeModel(draft, "default", preferred)
-    draft.model.default.set(PROVIDER_ID, preferred.catalogID)
+  if (preferred) draft.default.set(PROVIDER_ID, preferred.catalogID)
+}
+
+function providerInfo(): Provider.Info {
+  return {
+    id: providerId(),
+    name: "Cursor",
+    package: PACKAGE_SPEC,
+    integrationID: Integration.ID.make(PROVIDER_ID),
+    activation: "auto",
   }
 }
 
-function writeModel(draft: CatalogEditor, catalogID: string, model: CursorModelDescriptor): void {
-  draft.model.update(PROVIDER_ID, catalogID, (entry) => {
-    const defaults = Model.Info.default(providerId(), Model.ID.make(catalogID))
-    entry.id = defaults.id
-    entry.modelID = Model.ID.make(model.wireID)
-    entry.providerID = defaults.providerID
-    entry.name = model.name
-    entry.capabilities = { tools: true, input: ["text", "image"], output: ["text"] }
-    entry.variants = toCatalogVariants(model)
-    entry.time = defaults.time
-    entry.cost = defaults.cost
-    entry.status = "active"
-    entry.enabled = true
-    entry.limit = defaults.limit
-    entry.package = PACKAGE_SPEC
-    dropBaseURL(entry.settings)
-  })
+function catalogModels(models: readonly CursorModelDescriptor[]): Model.Info[] {
+  const entries = models.map((model) => catalogModel(model.catalogID, model))
+  const preferred = models[0]
+  if (preferred) entries.push(catalogModel("default", preferred))
+  return entries
+}
+
+function catalogModel(catalogID: string, model: CursorModelDescriptor): Model.Info {
+  const defaults = Model.Info.default(providerId(), Model.ID.make(catalogID))
+  return {
+    ...defaults,
+    modelID: Model.ID.make(model.wireID),
+    name: model.name,
+    capabilities: { tools: true, input: ["text", "image"], output: ["text"] },
+    variants: toCatalogVariants(model),
+    status: "active",
+    enabled: true,
+    package: PACKAGE_SPEC,
+  }
 }
 
 export function parseListedModels(raw: unknown): CursorModelDescriptor[] {

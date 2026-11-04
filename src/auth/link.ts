@@ -1,6 +1,6 @@
 import { Cursor } from "@cursor/sdk"
-import { Credential, Integration, Plugin } from "@opencode-ai/plugin"
-import type { IntegrationEditor } from "@opencode-ai/plugin/promise/integration"
+import { Credential, Integration, Plugin } from "@opencode/plugin"
+import type { IntegrationEditor } from "@opencode/plugin/promise/integration"
 import { ENV_NAME, INTEGRATION_ID, OAUTH_METHOD_ID, nowMs, type Parsed } from "../ids.ts"
 import { envCredential, fromHostCredential, oauthFromLogin, toHostOAuth, type CursorCredential } from "./credential.ts"
 import { reduce, usableKey, type AuthState } from "./state.ts"

@@ -1,4 +1,4 @@
-import type { SDKAssistantMessage, SDKThinkingMessage, SDKToolUseMessage, SDKUsageMessage } from "@cursor/sdk"
+import type { SDKAssistantMessage, SDKSummaryMessage, SDKThinkingMessage, SDKToolUseMessage, SDKUsageMessage } from "@cursor/sdk"
 import { describe, expect, test } from "bun:test"
 import { createMessageTranslator, translate } from "./translate.ts"
 
@@ -189,5 +189,12 @@ describe("translate", () => {
         total: 140,
       },
     ])
+  })
+})
+
+describe("summary messages", () => {
+  test("context compaction produces no turn events", () => {
+    const summary: SDKSummaryMessage = { type: "summary", agent_id: "agent", run_id: "run", status: "completed" }
+    expect(translate(summary)).toEqual([])
   })
 })
